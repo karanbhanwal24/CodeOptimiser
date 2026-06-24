@@ -68,6 +68,10 @@ print(bubble_sort([4, 1, 3, 2]))
 ];
 
 const TABS = ["Output", "Issues", "Metrics", "Explain"];
+const API_BASE_URL = import.meta.env.DEV ? "" : import.meta.env.VITE_API_BASE_URL || "/api";
+const api = axios.create({
+  baseURL: API_BASE_URL
+});
 
 const styles = {
   app: {
@@ -307,7 +311,7 @@ function App() {
 
   async function runOptimizer() {
     await withLoading("optimize", async () => {
-      const response = await axios.post("/optimize", { code });
+      const response = await api.post("/optimize", { code });
       const data = response.data;
       setOptimizedCode(data.optimized_code || "");
       setIssues(data.analysis?.issues || []);
@@ -322,7 +326,7 @@ function App() {
 
   async function runAnalysis() {
     await withLoading("analysis", async () => {
-      const response = await axios.post("/analysis", { code });
+      const response = await api.post("/analysis", { code });
       setIssues(response.data.issues || []);
       setActiveTab("Issues");
     });
@@ -342,7 +346,7 @@ function App() {
           }
         ];
       }
-      const response = await axios.post("/metrics", payload);
+      const response = await api.post("/metrics", payload);
       populateFromMetrics(response.data);
       setExplanation((current) => ({
         text: response.data.explanation || current.text,
