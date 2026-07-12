@@ -6,13 +6,18 @@ on:
       - main
 
 jobs:
-
-  test:
-
+  backend:
     runs-on: ubuntu-latest
 
-    steps:
+    defaults:
+      run:
+        working-directory: backend
 
+    steps:
       - uses: actions/checkout@v4
 
-      - run: echo "Hello CI"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python --version
