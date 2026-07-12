@@ -34,7 +34,7 @@ def _is_empty_collection_assign(node, collection_type):
 class FunctionMetadataCollector(ast.NodeVisitor):
     def __init__(self):
         self.current_function = None
-        self.recursive_calls = {}
+        self.recursive_calls = {} 
         self.cached_functions = set()
 
     def visit_FunctionDef(self, node):

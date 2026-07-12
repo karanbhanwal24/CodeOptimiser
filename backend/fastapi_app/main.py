@@ -5,9 +5,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from services.analysis import analyze_code
-from services.engine import compare_variants
-from pydantic import BaseModel
+# Use package-relative imports so the module can be started from the `backend` folder
+from .services.analysis import analyze_code
+from .services.engine import compare_variants
 
 
 class CodePayload(BaseModel):
@@ -84,12 +84,26 @@ async def analysis(payload: CodePayload) -> dict:
     return analyze_code(code)
 
 
-@app.post("/optimize")
-async def optimize(payload: CodePayload) -> dict:
+async def _optimize(payload: CodePayload) -> dict:
     code = validate_code(payload.code)
     result = compare_variants(code)
     result["analysis"] = analyze_code(code)
     return result
+
+
+@app.post("/optimize")
+async def optimize(payload: CodePayload) -> dict:
+    return await _optimize(payload)
+
+
+@app.post("/optimise")
+async def optimise(payload: CodePayload) -> dict:
+    return await _optimize(payload)
+
+
+@app.post("/optmise")
+async def optmise(payload: CodePayload) -> dict:
+    return await _optimize(payload)
 
 
 @app.post("/metrics")

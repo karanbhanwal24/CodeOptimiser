@@ -4,7 +4,7 @@ import io
 import timeit
 import tracemalloc
 
-from services.optimization import generate_variants
+from .optimization import generate_variants
 
 
 REPETITIONS = 5

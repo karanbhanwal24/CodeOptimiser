@@ -3,13 +3,10 @@ import sys
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-BACKEND_DIR = PROJECT_ROOT / "backend" / "fastapi_app"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
-
-from main import app as fastapi_app
-
+from backend.fastapi_app.main import app as fastapi_app
 
 async def app(scope, receive, send):
     path = scope.get("path", "")
