@@ -67,7 +67,7 @@ print(bubble_sort([4, 1, 3, 2]))
   }
 ];
 
-const TABS = ["Output", "Issues", "Metrics", "Explain"];
+const TABS = ["Output", "Issues", "Metrics", "Explains"];
 const API_BASE_URL = import.meta.env.DEV ? "" : import.meta.env.VITE_API_BASE_URL || "/api";
 const api = axios.create({
   baseURL: API_BASE_URL
