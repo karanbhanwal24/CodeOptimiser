@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            "https://code-optimiser-git-main-karan-bhanwals-projects.vercel.app",
         ]
     )
 
