@@ -5,10 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/optimize": "http://localhost:8001",
-      "/analysis": "http://localhost:8001",
-      "/metrics": "http://localhost:8001",
-      "/health": "http://localhost:8001"
+      "/optimize": "http://localhost:8000",
+      "/optimizations": "http://localhost:8000",
+      "/analysis": "http://localhost:8000",
+      "/metrics": "http://localhost:8000",
+      "/health": "http://localhost:8000"
     }
   }
 });

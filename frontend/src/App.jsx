@@ -67,7 +67,7 @@ print(bubble_sort([4, 1, 3, 2]))
   }
 ];
 
-const TABS = ["Output", "Issues", "Metrics", "Explains"];
+const TABS = ["Output", "Issues", "Metrics", "Explains", "History"];
 const API_BASE_URL = import.meta.env.DEV ? "" : import.meta.env.VITE_API_BASE_URL || "/api";
 const api = axios.create({
   baseURL: API_BASE_URL
@@ -258,6 +258,51 @@ const styles = {
     padding: "12px",
     background: "#f8fbff",
     border: "1px solid #dde7f1"
+  },
+  historyHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap"
+  },
+  historyList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px"
+  },
+  historyItem: {
+    borderRadius: "18px",
+    padding: "16px",
+    background: "#f8fbff",
+    border: "1px solid #dde7f1",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px"
+  },
+  historyMeta: {
+    display: "flex",
+    gap: "10px",
+    flexWrap: "wrap",
+    color: "var(--color-text-secondary)",
+    fontSize: "13px"
+  },
+  historyActions: {
+    display: "flex",
+    gap: "10px",
+    flexWrap: "wrap"
+  },
+  codePreview: {
+    margin: 0,
+    padding: "12px 14px",
+    borderRadius: "14px",
+    background: "#eef5fb",
+    color: "#17324b",
+    fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+    fontSize: "12px",
+    lineHeight: 1.5,
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word"
   }
 };
 
@@ -277,12 +322,38 @@ function groupIssues(issues) {
   }, {});
 }
 
+function formatTimestamp(value) {
+  if (!value) {
+    return "unknown";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
+}
+
+function previewCode(code, maxLength = 180) {
+  if (!code) {
+    return "No code saved.";
+  }
+
+  const normalized = code.trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength)}...`;
+}
+
 function App() {
   const [code, setCode] = useState(SAMPLE_SNIPPETS[0].code);
   const [optimizedCode, setOptimizedCode] = useState("");
   const [issues, setIssues] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [explanation, setExplanation] = useState({ text: "", improvements: [] });
+  const [historyRecords, setHistoryRecords] = useState([]);
   const [loading, setLoading] = useState("");
   const [activeTab, setActiveTab] = useState("Output");
   const [error, setError] = useState("");
@@ -295,7 +366,7 @@ function App() {
       setError("");
       await request();
     } catch (err) {
-      setError(err.response?.data?.error || err.message || "Request failed");
+      setError(err.response?.data?.detail || err.response?.data?.error || err.message || "Request failed");
     } finally {
       setLoading("");
     }
@@ -319,6 +390,29 @@ function App() {
       setExplanation({
         text: data.explanation || "Optimization completed.",
         improvements: data.improvements || []
+      });
+      setHistoryRecords((current) => {
+        const nextRecord = {
+          id: data.record_id,
+          original_code: code,
+          optimized_code: data.optimized_code || "",
+          explanation: data.explanation || "Optimization completed.",
+          original_time_ms: data.original_time_ms,
+          optimized_time_ms: data.optimized_time_ms,
+          original_memory_mb: data.original_memory_mb,
+          optimized_memory_mb: data.optimized_memory_mb,
+          time_improvement_pct: data.time_improvement_pct,
+          memory_improvement_pct: data.memory_improvement_pct,
+          lines_of_code_before: data.lines_of_code_before,
+          lines_of_code_after: data.lines_of_code_after,
+          cyclomatic_complexity_before: data.cyclomatic_complexity_before,
+          cyclomatic_complexity_after: data.cyclomatic_complexity_after,
+          improvements: data.improvements || [],
+          variants: data.variants || [],
+          analysis: data.analysis || {},
+          created_at: new Date().toISOString()
+        };
+        return [nextRecord, ...current.filter((item) => item.id !== nextRecord.id)];
       });
       setActiveTab("Output");
     });
@@ -353,6 +447,45 @@ function App() {
         improvements: response.data.improvements || current.improvements
       }));
       setActiveTab("Metrics");
+    });
+  }
+
+  function applyHistoryRecord(record) {
+    setCode(record.original_code || "");
+    setOptimizedCode(record.optimized_code || "");
+    setIssues(record.analysis?.issues || []);
+    setMetrics({
+      optimized_code: record.optimized_code,
+      original_time_ms: record.original_time_ms,
+      optimized_time_ms: record.optimized_time_ms,
+      original_memory_mb: record.original_memory_mb,
+      optimized_memory_mb: record.optimized_memory_mb,
+      time_improvement_pct: record.time_improvement_pct,
+      memory_improvement_pct: record.memory_improvement_pct,
+      lines_of_code_before: record.lines_of_code_before,
+      lines_of_code_after: record.lines_of_code_after,
+      cyclomatic_complexity_before: record.cyclomatic_complexity_before,
+      cyclomatic_complexity_after: record.cyclomatic_complexity_after,
+      variants: record.variants || [],
+      analysis: record.analysis || {}
+    });
+    setExplanation({
+      text: record.explanation || "Loaded from history.",
+      improvements: record.improvements || []
+    });
+    setActiveTab("Output");
+  }
+
+  async function loadHistory({ force = false } = {}) {
+    if (!force && historyRecords.length) {
+      setActiveTab("History");
+      return;
+    }
+
+    await withLoading("history", async () => {
+      const response = await api.get("/optimizations");
+      setHistoryRecords(response.data.items || []);
+      setActiveTab("History");
     });
   }
 
@@ -463,6 +596,9 @@ function App() {
               <button style={{ ...styles.button, ...styles.secondaryButton }} onClick={runMetrics} disabled={Boolean(loading)}>
                 {loading === "metrics" ? "Measuring..." : "Metrics"}
               </button>
+              <button style={{ ...styles.button, ...styles.secondaryButton }} onClick={() => loadHistory({ force: true })} disabled={Boolean(loading)}>
+                {loading === "history" ? "Loading..." : "View History"}
+              </button>
             </div>
           </section>
 
@@ -472,7 +608,13 @@ function App() {
                 <button
                   key={tab}
                   style={{ ...styles.tab, ...(activeTab === tab ? styles.activeTab : null) }}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => {
+                    if (tab === "History") {
+                      loadHistory();
+                      return;
+                    }
+                    setActiveTab(tab);
+                  }}
                 >
                   {tab}
                 </button>
@@ -570,7 +712,7 @@ function App() {
               </div>
             ) : null}
 
-            {activeTab === "Explain" ? (
+            {activeTab === "Explains" ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                 <div style={{ ...styles.metricCard, lineHeight: 1.6 }}>
                   {explanation.text || "Run the optimizer to generate a summary."}
@@ -585,6 +727,63 @@ function App() {
                     <div style={{ color: "var(--color-text-secondary)" }}>No optimization details available yet.</div>
                   )}
                 </div>
+              </div>
+            ) : null}
+
+            {activeTab === "History" ? (
+              <div style={styles.historyList}>
+                <div style={styles.historyHeader}>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>Optimization History</div>
+                    <div style={{ color: "var(--color-text-secondary)", fontSize: "13px", marginTop: "4px" }}>
+                      Saved optimization runs from PostgreSQL.
+                    </div>
+                  </div>
+                  <button
+                    style={{ ...styles.button, ...styles.secondaryButton, padding: "10px 14px" }}
+                    onClick={() => loadHistory({ force: true })}
+                    disabled={Boolean(loading)}
+                  >
+                    {loading === "history" ? "Refreshing..." : "Refresh"}
+                  </button>
+                </div>
+
+                {historyRecords.length ? historyRecords.map((record) => (
+                  <div key={record.id} style={styles.historyItem}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                      <div style={{ fontWeight: 700 }}>Run #{record.id}</div>
+                      <div style={styles.historyMeta}>
+                        <span>{formatTimestamp(record.created_at)}</span>
+                        <span>Time gain {formatNumber(record.time_improvement_pct, "%")}</span>
+                        <span>Memory gain {formatNumber(record.memory_improvement_pct, "%")}</span>
+                      </div>
+                    </div>
+
+                    <pre style={styles.codePreview}>{previewCode(record.original_code)}</pre>
+
+                    <div style={styles.historyActions}>
+                      <button
+                        style={{ ...styles.button, ...styles.primaryButton, padding: "10px 14px" }}
+                        onClick={() => applyHistoryRecord(record)}
+                      >
+                        Load Run
+                      </button>
+                      <button
+                        style={{ ...styles.button, ...styles.secondaryButton, padding: "10px 14px" }}
+                        onClick={() => {
+                          setCode(record.original_code || "");
+                          setActiveTab("Output");
+                        }}
+                      >
+                        Load Source Only
+                      </button>
+                    </div>
+                  </div>
+                )) : (
+                  <div style={{ ...styles.metricCard, color: "var(--color-text-secondary)" }}>
+                    No optimization history yet. Run the optimizer once to create a saved record.
+                  </div>
+                )}
               </div>
             ) : null}
           </section>
