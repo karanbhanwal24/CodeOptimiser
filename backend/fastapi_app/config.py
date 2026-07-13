@@ -31,9 +31,9 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             "http://localhost:5173",
             "http://127.0.0.1:5173",
-            "https://code-optimiser-git-main-karan-bhanwals-projects.vercel.app",
         ]
     )
+    allowed_origin_regex: str | None = r"^https://.*\.vercel\.app$"
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
@@ -43,6 +43,14 @@ class Settings(BaseSettings):
         if not value:
             return []
         return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+    @field_validator("allowed_origin_regex", mode="before")
+    @classmethod
+    def parse_allowed_origin_regex(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
 
 
 @lru_cache
