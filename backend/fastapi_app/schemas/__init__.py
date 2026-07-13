@@ -6,6 +6,7 @@ from .optimization import (
     OptimizationRecordResponse,
     OptimizationRecordUpdate,
     OptimizationResponse,
+    OptimizationSuggestionResponse,
     OptimizationVariant,
 )
 
@@ -17,5 +18,6 @@ __all__ = [
     "OptimizationRecordResponse",
     "OptimizationRecordUpdate",
     "OptimizationResponse",
+    "OptimizationSuggestionResponse",
     "OptimizationVariant",
 ]

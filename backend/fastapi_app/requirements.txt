@@ -1,9 +1,11 @@
 alembic==1.18.5
-fastapi==0.104.1
+fastapi==0.116.1
+google-genai==2.11.0
 httpx==0.28.1
 psycopg[binary]==3.3.4
 pydantic-settings==2.11.0
 python-dotenv==1.0.0
 PyJWT==2.8.0
 SQLAlchemy==2.0.51
+starlette==0.47.2
 uvicorn==0.24.0

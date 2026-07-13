@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:password@postgres:5432/codeoptimise"
     database_echo: bool = False
     auto_migrate: bool = True
+    ai_provider: str = "gemini"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.5-flash"
+    gemini_timeout_seconds: float = 20.0
+    gemini_max_retries: int = 2
     allowed_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:5173",

@@ -18,6 +18,26 @@ class DatabaseOperationError(AppError):
     detail = "Database operation failed"
 
 
+class AIProviderError(AppError):
+    status_code = 502
+    detail = "AI provider request failed"
+
+
+class AIProviderTimeoutError(AppError):
+    status_code = 504
+    detail = "AI provider timed out"
+
+
+class AIProviderRateLimitError(AppError):
+    status_code = 429
+    detail = "AI provider rate limit exceeded"
+
+
+class AIProviderConfigurationError(AppError):
+    status_code = 500
+    detail = "AI provider is not configured correctly"
+
+
 class ResourceNotFoundError(AppError):
     status_code = 404
     detail = "Resource not found"

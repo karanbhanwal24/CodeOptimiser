@@ -347,12 +347,16 @@ function previewCode(code, maxLength = 180) {
   return `${normalized.slice(0, maxLength)}...`;
 }
 
+function complexityText(value) {
+  return value || "n/a";
+}
+
 function App() {
   const [code, setCode] = useState(SAMPLE_SNIPPETS[0].code);
   const [optimizedCode, setOptimizedCode] = useState("");
   const [issues, setIssues] = useState([]);
   const [metrics, setMetrics] = useState(null);
-  const [explanation, setExplanation] = useState({ text: "", improvements: [] });
+  const [explanation, setExplanation] = useState({ text: "", suggestions: [], betterPractices: [], performanceIssues: [] });
   const [historyRecords, setHistoryRecords] = useState([]);
   const [loading, setLoading] = useState("");
   const [activeTab, setActiveTab] = useState("Output");
@@ -382,21 +386,29 @@ function App() {
 
   async function runOptimizer() {
     await withLoading("optimize", async () => {
-      const response = await api.post("/optimize", { code });
+      const response = await api.post("/optimize", { language: "python", code });
       const data = response.data;
       setOptimizedCode(data.optimized_code || "");
       setIssues(data.analysis?.issues || []);
       setMetrics(data);
       setExplanation({
         text: data.explanation || "Optimization completed.",
-        improvements: data.improvements || []
+        suggestions: data.suggestions || [],
+        betterPractices: data.better_practices || [],
+        performanceIssues: data.performance_issues || []
       });
       setHistoryRecords((current) => {
         const nextRecord = {
           id: data.record_id,
+          language: data.language || "python",
+          provider: data.provider || "gemini",
           original_code: code,
           optimized_code: data.optimized_code || "",
           explanation: data.explanation || "Optimization completed.",
+          time_complexity_before: data.time_complexity_before,
+          time_complexity_after: data.time_complexity_after,
+          space_complexity_before: data.space_complexity_before,
+          space_complexity_after: data.space_complexity_after,
           original_time_ms: data.original_time_ms,
           optimized_time_ms: data.optimized_time_ms,
           original_memory_mb: data.original_memory_mb,
@@ -407,6 +419,9 @@ function App() {
           lines_of_code_after: data.lines_of_code_after,
           cyclomatic_complexity_before: data.cyclomatic_complexity_before,
           cyclomatic_complexity_after: data.cyclomatic_complexity_after,
+          suggestions: data.suggestions || [],
+          performance_issues: data.performance_issues || [],
+          better_practices: data.better_practices || [],
           improvements: data.improvements || [],
           variants: data.variants || [],
           analysis: data.analysis || {},
@@ -444,7 +459,9 @@ function App() {
       populateFromMetrics(response.data);
       setExplanation((current) => ({
         text: response.data.explanation || current.text,
-        improvements: response.data.improvements || current.improvements
+        suggestions: response.data.suggestions || current.suggestions,
+        betterPractices: response.data.better_practices || current.betterPractices,
+        performanceIssues: response.data.performance_issues || current.performanceIssues
       }));
       setActiveTab("Metrics");
     });
@@ -456,6 +473,10 @@ function App() {
     setIssues(record.analysis?.issues || []);
     setMetrics({
       optimized_code: record.optimized_code,
+      time_complexity_before: record.time_complexity_before,
+      time_complexity_after: record.time_complexity_after,
+      space_complexity_before: record.space_complexity_before,
+      space_complexity_after: record.space_complexity_after,
       original_time_ms: record.original_time_ms,
       optimized_time_ms: record.optimized_time_ms,
       original_memory_mb: record.original_memory_mb,
@@ -471,7 +492,9 @@ function App() {
     });
     setExplanation({
       text: record.explanation || "Loaded from history.",
-      improvements: record.improvements || []
+      suggestions: record.suggestions || [],
+      betterPractices: record.better_practices || [],
+      performanceIssues: record.performance_issues || []
     });
     setActiveTab("Output");
   }
@@ -484,7 +507,13 @@ function App() {
 
     await withLoading("history", async () => {
       const response = await api.get("/optimizations");
-      setHistoryRecords(response.data.items || []);
+      setHistoryRecords(
+        (response.data.items || []).map((item) => ({
+          ...item,
+          better_practices: item.better_practices || item.ai_response?.better_practices || [],
+          performance_issues: item.performance_issues || item.ai_response?.performance_issues || [],
+        }))
+      );
       setActiveTab("History");
     });
   }
@@ -541,21 +570,21 @@ function App() {
               3-Tier Code Optimizer
             </div>
             <h1 style={{ margin: "0 0 10px", fontSize: "clamp(2rem, 3vw, 3rem)", lineHeight: 1.05 }}>
-              Analyze Python code, generate AST-safe rewrites, and compare the runtime tradeoffs.
+              Analyze Python code, generate AI-powered rewrites, and compare the complexity tradeoffs.
             </h1>
             <p style={{ margin: 0, color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
-              The optimizer produces independent variants plus a combined rewrite, reports timing and memory,
-              and surfaces analysis issues before you accept a suggestion.
+              Gemini proposes behavior-preserving optimizations, explains each change, estimates time and space complexity,
+              and stores every run in PostgreSQL for later review.
             </p>
           </section>
 
           <section style={{ ...styles.heroCard, flex: "0 1 280px" }}>
-            <div style={{ color: "var(--color-text-secondary)", fontSize: "13px", marginBottom: "6px" }}>Current best time improvement</div>
+            <div style={{ color: "var(--color-text-secondary)", fontSize: "13px", marginBottom: "6px" }}>Current time complexity</div>
             <div style={{ fontSize: "2.4rem", fontWeight: 700, color: "var(--color-accent)" }}>
-              {formatNumber(metrics?.time_improvement_pct, "%")}
+              {complexityText(metrics?.time_complexity_after)}
             </div>
             <div style={{ color: "var(--color-text-secondary)", marginTop: "10px", lineHeight: 1.5 }}>
-              {metrics?.variants?.find((variant) => variant.code === optimizedCode)?.name || "Run the optimizer to benchmark variants."}
+              {metrics?.provider ? `Provider: ${metrics.provider}` : "Run the optimizer to generate an AI suggestion."}
             </div>
           </section>
           {/* Account panel removed to keep UI compact and auth-free */}
@@ -658,20 +687,20 @@ function App() {
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={styles.metricsGrid}>
                   <div style={styles.metricCard}>
-                    <div style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>Original Time</div>
-                    <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{formatNumber(metrics?.original_time_ms, " ms")}</div>
+                    <div style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>Time Complexity Before</div>
+                    <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{complexityText(metrics?.time_complexity_before)}</div>
                   </div>
                   <div style={styles.metricCard}>
-                    <div style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>Optimized Time</div>
-                    <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{formatNumber(metrics?.optimized_time_ms, " ms")}</div>
+                    <div style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>Time Complexity After</div>
+                    <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{complexityText(metrics?.time_complexity_after)}</div>
                   </div>
                   <div style={styles.metricCard}>
-                    <div style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>Original Memory</div>
-                    <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{formatNumber(metrics?.original_memory_mb, " MB")}</div>
+                    <div style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>Space Complexity Before</div>
+                    <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{complexityText(metrics?.space_complexity_before)}</div>
                   </div>
                   <div style={styles.metricCard}>
-                    <div style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>Optimized Memory</div>
-                    <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{formatNumber(metrics?.optimized_memory_mb, " MB")}</div>
+                    <div style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>Space Complexity After</div>
+                    <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{complexityText(metrics?.space_complexity_after)}</div>
                   </div>
                 </div>
 
@@ -718,13 +747,33 @@ function App() {
                   {explanation.text || "Run the optimizer to generate a summary."}
                 </div>
                 <div style={{ ...styles.metricCard, paddingBottom: "8px" }}>
-                  <div style={{ fontWeight: 700, marginBottom: "10px" }}>Improvements</div>
-                  {(explanation.improvements || []).length ? (
+                  <div style={{ fontWeight: 700, marginBottom: "10px" }}>Optimization Suggestions</div>
+                  {(explanation.suggestions || []).length ? (
                     <ul style={{ margin: 0, paddingLeft: "18px", lineHeight: 1.7 }}>
-                      {explanation.improvements.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
+                      {explanation.suggestions.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
                     </ul>
                   ) : (
                     <div style={{ color: "var(--color-text-secondary)" }}>No optimization details available yet.</div>
+                  )}
+                </div>
+                <div style={{ ...styles.metricCard, paddingBottom: "8px" }}>
+                  <div style={{ fontWeight: 700, marginBottom: "10px" }}>Better Practices</div>
+                  {(explanation.betterPractices || []).length ? (
+                    <ul style={{ margin: 0, paddingLeft: "18px", lineHeight: 1.7 }}>
+                      {explanation.betterPractices.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
+                    </ul>
+                  ) : (
+                    <div style={{ color: "var(--color-text-secondary)" }}>No coding practice recommendations yet.</div>
+                  )}
+                </div>
+                <div style={{ ...styles.metricCard, paddingBottom: "8px" }}>
+                  <div style={{ fontWeight: 700, marginBottom: "10px" }}>Detected Performance Issues</div>
+                  {(explanation.performanceIssues || []).length ? (
+                    <ul style={{ margin: 0, paddingLeft: "18px", lineHeight: 1.7 }}>
+                      {explanation.performanceIssues.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
+                    </ul>
+                  ) : (
+                    <div style={{ color: "var(--color-text-secondary)" }}>No performance issues reported yet.</div>
                   )}
                 </div>
               </div>
@@ -754,8 +803,9 @@ function App() {
                       <div style={{ fontWeight: 700 }}>Run #{record.id}</div>
                       <div style={styles.historyMeta}>
                         <span>{formatTimestamp(record.created_at)}</span>
-                        <span>Time gain {formatNumber(record.time_improvement_pct, "%")}</span>
-                        <span>Memory gain {formatNumber(record.memory_improvement_pct, "%")}</span>
+                        <span>{record.provider || "gemini"}</span>
+                        <span>{record.language || "python"}</span>
+                        <span>{complexityText(record.time_complexity_before)} {"->"} {complexityText(record.time_complexity_after)}</span>
                       </div>
                     </div>
 

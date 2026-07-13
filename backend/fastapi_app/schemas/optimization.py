@@ -7,7 +7,20 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class CodePayload(BaseModel):
+    language: str = "python"
     code: str
+
+
+class OptimizationSuggestionResponse(BaseModel):
+    optimized_code: str
+    explanation: str
+    time_complexity_before: str
+    time_complexity_after: str
+    space_complexity_before: str
+    space_complexity_after: str
+    suggestions: list[str] = Field(default_factory=list)
+    performance_issues: list[str] = Field(default_factory=list)
+    better_practices: list[str] = Field(default_factory=list)
 
 
 class OptimizationVariant(BaseModel):
@@ -50,9 +63,14 @@ class AnalysisResponse(BaseModel):
 class OptimizationRecordBase(BaseModel):
     id: int
     language: str
+    provider: str
     original_code: str
     optimized_code: str
     explanation: str
+    time_complexity_before: str | None = None
+    time_complexity_after: str | None = None
+    space_complexity_before: str | None = None
+    space_complexity_after: str | None = None
     original_time_ms: float | None = None
     optimized_time_ms: float | None = None
     original_memory_mb: float | None = None
@@ -64,6 +82,8 @@ class OptimizationRecordBase(BaseModel):
     cyclomatic_complexity_before: int | None = None
     cyclomatic_complexity_after: int | None = None
     improvements: list[Any] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+    ai_response: dict[str, Any] = Field(default_factory=dict)
     variants: list[dict[str, Any]] = Field(default_factory=list)
     analysis: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
@@ -74,7 +94,17 @@ class OptimizationRecordBase(BaseModel):
 
 class OptimizationResponse(BaseModel):
     record_id: int
+    language: str
+    provider: str
     optimized_code: str
+    explanation: str
+    time_complexity_before: str
+    time_complexity_after: str
+    space_complexity_before: str
+    space_complexity_after: str
+    suggestions: list[str] = Field(default_factory=list)
+    performance_issues: list[str] = Field(default_factory=list)
+    better_practices: list[str] = Field(default_factory=list)
     original_time_ms: float | None = None
     optimized_time_ms: float | None = None
     original_memory_mb: float | None = None
@@ -82,7 +112,6 @@ class OptimizationResponse(BaseModel):
     time_improvement_pct: float | None = None
     memory_improvement_pct: float | None = None
     variants: list[dict[str, Any]] = Field(default_factory=list)
-    explanation: str
     improvements: list[Any] = Field(default_factory=list)
     lines_of_code_before: int | None = None
     lines_of_code_after: int | None = None
@@ -100,6 +129,7 @@ class OptimizationRecordListResponse(BaseModel):
 
 
 class OptimizationRecordUpdate(BaseModel):
+    provider: str | None = None
     original_code: str | None = None
     optimized_code: str | None = None
     language: str | None = None
