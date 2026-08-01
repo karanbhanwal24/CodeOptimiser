@@ -8,6 +8,7 @@ from .optimization import generate_variants
 
 
 REPETITIONS = 5
+PERFORMANCE_TOLERANCE_PCT = 3.0
 
 
 def _safe_exec(compiled):
@@ -86,24 +87,42 @@ def _prepare_variants(original_code, variants):
     return generate_variants(original_code)
 
 
-def _select_output_variant(comparison_variants):
-    combined_variant = next(
-        (
-            variant
-            for variant in comparison_variants
-            if variant.get("name") == "combined"
-            and not variant.get("error")
-            and variant.get("code")
-        ),
-        None,
+def _is_meaningfully_better(variant):
+    time_gain = variant.get("time_improvement_pct") or 0.0
+    memory_gain = variant.get("memory_improvement_pct") or 0.0
+    time_not_worse = time_gain >= -PERFORMANCE_TOLERANCE_PCT
+    memory_not_worse = memory_gain >= -PERFORMANCE_TOLERANCE_PCT
+    complexity_before = variant.get("cyclomatic_complexity_before")
+    complexity_after = variant.get("cyclomatic_complexity_after")
+    lines_before = variant.get("lines_of_code_before")
+    lines_after = variant.get("lines_of_code_after")
+    complexity_improved = (
+        complexity_before is not None
+        and complexity_after is not None
+        and complexity_after < complexity_before
     )
-    if combined_variant:
-        return combined_variant
+    lines_improved = lines_before is not None and lines_after is not None and lines_after < lines_before
+    performance_improved = time_gain > PERFORMANCE_TOLERANCE_PCT or memory_gain > PERFORMANCE_TOLERANCE_PCT
+    return time_not_worse and memory_not_worse and (performance_improved or complexity_improved or lines_improved)
 
-    valid_variants = [variant for variant in comparison_variants if not variant["error"] and variant["time_ms"] is not None]
+
+def _select_output_variant(comparison_variants):
+    valid_variants = [
+        variant
+        for variant in comparison_variants
+        if not variant["error"] and variant["time_ms"] is not None and _is_meaningfully_better(variant)
+    ]
     if not valid_variants:
         return None
-    return min(valid_variants, key=lambda item: (item["time_ms"], item["memory_mb"] or float("inf")))
+    return min(
+        valid_variants,
+        key=lambda item: (
+            -(item.get("time_improvement_pct") or 0.0),
+            -(item.get("memory_improvement_pct") or 0.0),
+            item["time_ms"],
+            item["memory_mb"] or float("inf"),
+        ),
+    )
 
 
 def compare_variants(original_code: str, variants=None) -> dict:

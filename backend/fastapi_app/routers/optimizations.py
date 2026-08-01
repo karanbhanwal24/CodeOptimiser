@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
-from ..exceptions import AppError
 from ..schemas import (
     CodePayload,
     OptimizationRecordListResponse,
@@ -21,9 +20,7 @@ router = APIRouter(tags=["optimizations"])
 async def _run_optimization(payload: CodePayload, db: Session) -> dict:
     service = OptimizationService(db)
     try:
-        return service.optimize_and_store(payload)
-    except AppError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        return service.optimize_and_store(payload.code)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

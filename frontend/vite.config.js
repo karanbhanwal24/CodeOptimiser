@@ -7,6 +7,7 @@ export default defineConfig({
     proxy: {
       "/optimize": "http://localhost:8000",
       "/optimizations": "http://localhost:8000",
+      "/ai": "http://localhost:8000",
       "/analysis": "http://localhost:8000",
       "/metrics": "http://localhost:8000",
       "/health": "http://localhost:8000"
