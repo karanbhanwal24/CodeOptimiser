@@ -19,13 +19,28 @@ The backend is organized under `backend/fastapi_app`:
 1. Create a Python environment and install backend dependencies:
 
 ```bash
-cd backend
 pip install -r requirements.txt
 ```
 
 2. Copy `.env.example` to `.env` if you need custom values.
 
-3. Start PostgreSQL and the app stack with Docker Compose:
+3. Start PostgreSQL, then run the FastAPI API from the project root:
+
+```bash
+docker compose up -d postgres
+uvicorn main:app --reload
+```
+
+If your terminal is already in `backend/`, use that same command there:
+
+```bash
+uvicorn main:app --reload
+```
+
+The API is available at `http://127.0.0.1:8000`; interactive API docs are at
+`http://127.0.0.1:8000/docs`.
+
+4. Alternatively, start the complete frontend and backend stack with Docker Compose:
 
 ```bash
 docker compose up --build
