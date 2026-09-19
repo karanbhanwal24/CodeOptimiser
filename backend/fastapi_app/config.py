@@ -52,6 +52,16 @@ class Settings(BaseSettings):
         cleaned = value.strip()
         return cleaned or None
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def use_psycopg_driver(cls, value: str) -> str:
+        """Accept the standard PostgreSQL URL provided by hosting platforms."""
+        if value.startswith("postgres://"):
+            value = "postgresql://" + value.removeprefix("postgres://")
+        if value.startswith("postgresql://"):
+            return "postgresql+psycopg://" + value.removeprefix("postgresql://")
+        return value
+
 
 @lru_cache
 def get_settings() -> Settings:

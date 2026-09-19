@@ -40,6 +40,18 @@ uvicorn main:app --reload
 The API is available at `http://127.0.0.1:8000`; interactive API docs are at
 `http://127.0.0.1:8000/docs`.
 
+## Deploy the backend to Render
+
+This repository includes a Render Blueprint in `render.yaml`. In the Render
+dashboard, select **New +** → **Blueprint**, connect the GitHub repository, and
+deploy it. Render will create the `codeoptimise-api` web service and its
+PostgreSQL database, apply migrations on startup, and expose `/health` as the
+health check.
+
+Before deploying, replace the `ALLOWED_ORIGINS` value in `render.yaml` with
+your deployed frontend URL (or add it later in the service's environment
+variables). The backend is started with Render's assigned `PORT`.
+
 4. Alternatively, start the complete frontend and backend stack with Docker Compose:
 
 ```bash
