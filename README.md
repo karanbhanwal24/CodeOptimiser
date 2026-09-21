@@ -60,6 +60,16 @@ docker compose up --build
 
 The backend runs on `http://localhost:8000` and the frontend runs on `http://localhost:5173`.
 
+When the frontend is deployed to Vercel and the backend is deployed to Render,
+set this Vercel environment variable to the public backend URL:
+
+```env
+VITE_API_BASE_URL=https://codeoptimiser.onrender.com
+```
+
+The frontend uses this Render URL by default in production, but the environment
+variable is recommended if the backend hostname changes.
+
 ## PostgreSQL configuration
 
 Environment variables are loaded from the project `.env` file and passed into Docker Compose:
