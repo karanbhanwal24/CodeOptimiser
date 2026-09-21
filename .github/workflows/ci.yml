@@ -14,7 +14,22 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Debug checkout
+        run: |
+          echo "=== Git commit ==="
+          git rev-parse HEAD
+
+          echo "=== Git branch ==="
+          git branch --show-current
+
+          echo "=== AI test file ==="
+          sed -n '1,20p' tests/test_ai_insights_service.py
+
+          echo "=== Searching for old imports ==="
+          grep -R "backend.fastapi_app" tests || true
 
       - uses: actions/setup-python@v5
         with:
@@ -22,7 +37,7 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Run backend tests
+      - name: Run pytest
         env:
           PYTHONPATH: .
         run: pytest
@@ -35,7 +50,8 @@ jobs:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
