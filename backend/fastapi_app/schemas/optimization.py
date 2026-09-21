@@ -76,12 +76,25 @@ class AIQuestionRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2_000)
     code: str = Field(min_length=1, max_length=50_000)
     analysis: AIAnalysisContext | None = None
+    history: list["AIChatMessage"] = Field(default_factory=list, max_length=20)
 
     @field_validator("question", "code")
     @classmethod
     def values_must_not_be_blank(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("Question and code must not be blank.")
+        return value
+
+
+class AIChatMessage(BaseModel):
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=2_000)
+
+    @field_validator("content")
+    @classmethod
+    def content_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Chat messages must not be blank.")
         return value
 
 

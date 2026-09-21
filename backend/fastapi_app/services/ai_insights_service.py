@@ -19,8 +19,8 @@ class AIInsightsService:
     """Gemini adapter that only explains supplied analyzer results."""
 
     def __init__(self, settings: Settings):
-        self._api_key = settings.gemini_api_key
-        self._model = settings.gemini_model
+        self._api_key = (settings.gemini_api_key or "").strip() or None
+        self._model = (settings.gemini_model or "gemini-2.5-flash").strip()
 
     async def get_insights(self, request: AIInsightsRequest) -> AIInsightsResponse:
         return await self._run_optional_request(self._generate, request)
@@ -37,7 +37,7 @@ class AIInsightsService:
             raise
         except Exception as exc:
             # Provider details may include sensitive configuration; keep them server-side.
-            logger.warning("Gemini insights request failed: %s", type(exc).__name__)
+            logger.exception("Gemini insights request failed: %s", type(exc).__name__)
             raise AIInsightsUnavailableError(
                 "AI Insights is temporarily unavailable. Your CodeOptimise analysis is unchanged."
             ) from exc
@@ -91,6 +91,7 @@ class AIInsightsService:
             "question": request.question,
             "source_code": request.code,
             "analyzer_results": request.analysis.model_dump() if request.analysis else None,
+            "conversation_history": [message.model_dump() for message in request.history],
         }
         prompt = (
             "You are CodeOptimise's advisory Q&A layer. Answer the user's question about the supplied "

@@ -357,6 +357,7 @@ function App() {
   const [includeRefactoredCode, setIncludeRefactoredCode] = useState(false);
   const [aiQuestion, setAiQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
   const [explanation, setExplanation] = useState({ text: "", improvements: [] });
   const [historyRecords, setHistoryRecords] = useState([]);
   const [loading, setLoading] = useState("");
@@ -465,9 +466,16 @@ function App() {
       const response = await api.post("/ai/questions", {
         question: aiQuestion,
         code,
-        analysis: analysisContext
+        analysis: analysisContext,
+        history: chatMessages.slice(-20)
       });
+      setChatMessages((messages) => [
+        ...messages,
+        { role: "user", content: aiQuestion.trim() },
+        { role: "assistant", content: response.data.answer }
+      ]);
       setAiAnswer(response.data);
+      setAiQuestion("");
       setActiveTab("AI Insights");
     });
   }
@@ -795,7 +803,29 @@ function App() {
                   </button>
                 </div>
                 <div style={{ ...styles.metricCard, display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <div style={{ fontWeight: 700 }}>Ask about this code</div>
+                  <div style={{ fontWeight: 700 }}>Code assistant</div>
+                  <div style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>
+                    Ask follow-up questions about the current code and analyzer findings.
+                  </div>
+                  {chatMessages.length ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto" }}>
+                      {chatMessages.map((message, index) => (
+                        <div
+                          key={`${message.role}-${index}`}
+                          style={{
+                            alignSelf: message.role === "user" ? "flex-end" : "flex-start",
+                            maxWidth: "90%",
+                            background: message.role === "user" ? "#e5f0fb" : "#f6f8fa",
+                            borderRadius: "12px",
+                            padding: "10px 12px",
+                            lineHeight: 1.5
+                          }}
+                        >
+                          <strong>{message.role === "user" ? "You" : "Assistant"}:</strong> {message.content}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   <textarea
                     value={aiQuestion}
                     onChange={(event) => setAiQuestion(event.target.value)}
@@ -805,11 +835,16 @@ function App() {
                   />
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                     <span style={{ color: "var(--color-text-secondary)", fontSize: "12px" }}>Answers use the current source and available analyzer findings.</span>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                    <button style={{ ...styles.button, ...styles.secondaryButton, padding: "10px 14px" }} onClick={() => { setChatMessages([]); setAiAnswer(null); }} disabled={Boolean(loading) || !chatMessages.length}>
+                      Clear chat
+                    </button>
                     <button style={{ ...styles.button, ...styles.secondaryButton, padding: "10px 14px" }} onClick={askAIQuestion} disabled={Boolean(loading) || !aiQuestion.trim()}>
                       {loading === "ai-question" ? "Answering..." : "Ask AI"}
                     </button>
+                    </div>
                   </div>
-                  {aiAnswer ? <div style={{ borderTop: "1px solid #dde7f1", paddingTop: "12px", lineHeight: 1.6 }}><div style={{ fontWeight: 700, marginBottom: "6px" }}>Answer</div>{aiAnswer.answer}<div style={{ color: "var(--color-text-secondary)", fontSize: "12px", marginTop: "10px" }}>{aiAnswer.disclaimer}</div></div> : null}
+                  {aiAnswer ? <div style={{ color: "var(--color-text-secondary)", fontSize: "12px" }}>{aiAnswer.disclaimer}</div> : null}
                 </div>
                 {aiInsights ? (
                   <>
