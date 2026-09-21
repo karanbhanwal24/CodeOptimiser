@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import asyncio
 
-from backend.fastapi_app.config import Settings
-from backend.fastapi_app.schemas import AIInsightsRequest, AIInsightsResponse
-from backend.fastapi_app.services.ai_insights_service import AIInsightsService
+from fastapi_app.config import Settings
+from fastapi_app.schemas import AIInsightsRequest, AIInsightsResponse
+from fastapi_app.services.ai_insights_service import AIInsightsService
+
 
 
 def test_ai_insights_service_returns_structured_advisory_response(monkeypatch) -> None:
