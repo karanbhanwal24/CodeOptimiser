@@ -3,6 +3,7 @@ annotated-types==0.7.0
 anyio==3.7.1
 click==8.4.2
 fastapi==0.104.1
+google-genai>=1.0.0,<2.0.0
 h11==0.16.0
 httpx==0.28.1
 idna==3.18

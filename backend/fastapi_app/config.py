@@ -34,6 +34,9 @@ class Settings(BaseSettings):
         ]
     )
     allowed_origin_regex: str | None = r"^https://.*\.vercel\.app$"
+    # Backend-only optional integration; it is never returned to API clients.
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash"
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

@@ -10,7 +10,7 @@ from .config import get_settings
 from .exceptions import register_exception_handlers
 from .logging_config import configure_logging
 from .migrations import run_migrations, wait_for_database
-from .routers import analysis_router, health_router, optimizations_router
+from .routers import ai_router, analysis_router, health_router, optimizations_router
 
 
 def create_app() -> FastAPI:
@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
     app.include_router(health_router)
     app.include_router(analysis_router)
+    app.include_router(ai_router)
     app.include_router(optimizations_router)
     return app
 

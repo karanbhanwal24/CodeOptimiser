@@ -72,6 +72,28 @@ Environment variables are loaded from the project `.env` file and passed into Do
 - `ALLOWED_ORIGINS`
 - `AUTO_MIGRATE`
 
+## Optional Gemini AI Insights
+
+AI Insights is an optional explanation layer. The existing static analyzer and optimizer remain the source of truth; Gemini receives the source code plus the analyzer's current findings only to explain them and suggest possible improvements.
+
+1. Install the updated backend dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Add this value to your local `.env` or your backend host's secret environment settings. Do not use a frontend `VITE_` variable and do not commit `.env`:
+
+```env
+GEMINI_API_KEY=your_google_ai_studio_key
+# Optional; defaults to gemini-2.5-flash
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+3. Run an analysis or optimizer job, then select **AI Insights** in the UI. The UI sends the existing analyzer results to `POST /ai/insights`, where the backend calls Gemini through Google's official `google-genai` Python SDK.
+
+The feature provides a summary, code and issue explanations, suggestions, and an optional refactored-code suggestion. It has its own loading/error state. If no key is configured or Gemini is unavailable, `/ai/insights` returns `503`; analysis, optimization, metrics, and saved-history workflows continue normally.
+
 The FastAPI app waits for PostgreSQL during startup and runs `alembic upgrade head` automatically, so the schema is created without a manual migration step.
 
 ## Backend endpoints
@@ -80,6 +102,7 @@ Existing frontend-facing endpoints are unchanged:
 
 - `POST /analysis`
 - `POST /metrics`
+- `POST /ai/insights` (optional Gemini explanation service)
 - `POST /optimize`
 - `POST /optimise`
 - `POST /optmise`

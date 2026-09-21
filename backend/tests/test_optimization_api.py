@@ -83,3 +83,33 @@ def test_optimization_crud_flow(tmp_path: Path) -> None:
             assert missing_response.status_code == 404
 
     asyncio.run(run())
+
+
+def test_ai_insights_validates_input_and_is_optional(tmp_path: Path) -> None:
+    """A missing Gemini key must not affect the normal analysis API."""
+    os.environ.pop("GEMINI_API_KEY", None)
+
+    async def run() -> None:
+        async with create_test_client(tmp_path) as client:
+            invalid_response = await client.post("/ai/insights", json={"code": " ", "analysis": {}})
+            assert invalid_response.status_code == 422
+
+            unavailable_response = await client.post(
+                "/ai/insights",
+                json={
+                    "code": "x = 1\nprint(x)\n",
+                    "analysis": {
+                        "issues": [],
+                        "issue_count": 0,
+                        "complexity_estimate": "low",
+                        "cyclomatic_complexity": 1,
+                    },
+                },
+            )
+            assert unavailable_response.status_code == 503
+            assert "GEMINI_API_KEY" in unavailable_response.json()["detail"]
+
+            analysis_response = await client.post("/analysis", json={"code": "x = 1\nprint(x)\n"})
+            assert analysis_response.status_code == 200
+
+    asyncio.run(run())

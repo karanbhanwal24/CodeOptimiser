@@ -67,7 +67,7 @@ print(bubble_sort([4, 1, 3, 2]))
   }
 ];
 
-const TABS = ["Output", "Issues", "Metrics", "Explains", "History"];
+const TABS = ["Output", "Issues", "Metrics", "Explains", "AI Insights", "History"];
 const API_BASE_URL = import.meta.env.DEV ? "" : import.meta.env.VITE_API_BASE_URL || "/api";
 const api = axios.create({
   baseURL: API_BASE_URL
@@ -352,6 +352,11 @@ function App() {
   const [optimizedCode, setOptimizedCode] = useState("");
   const [issues, setIssues] = useState([]);
   const [metrics, setMetrics] = useState(null);
+  const [analysisContext, setAnalysisContext] = useState(null);
+  const [aiInsights, setAiInsights] = useState(null);
+  const [includeRefactoredCode, setIncludeRefactoredCode] = useState(false);
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiAnswer, setAiAnswer] = useState(null);
   const [explanation, setExplanation] = useState({ text: "", improvements: [] });
   const [historyRecords, setHistoryRecords] = useState([]);
   const [loading, setLoading] = useState("");
@@ -386,6 +391,8 @@ function App() {
       const data = response.data;
       setOptimizedCode(data.optimized_code || "");
       setIssues(data.analysis?.issues || []);
+      setAnalysisContext(data.analysis || null);
+      setAiInsights(null);
       setMetrics(data);
       setExplanation({
         text: data.explanation || "Optimization completed.",
@@ -422,7 +429,46 @@ function App() {
     await withLoading("analysis", async () => {
       const response = await api.post("/analysis", { code });
       setIssues(response.data.issues || []);
+      setAnalysisContext(response.data);
+      setAiInsights(null);
       setActiveTab("Issues");
+    });
+  }
+
+  async function runAIInsights() {
+    await withLoading("ai", async () => {
+      // If source changed since the last run, refresh deterministic analysis first.
+      let currentAnalysis = analysisContext;
+      if (!currentAnalysis) {
+        const analysisResponse = await api.post("/analysis", { code });
+        currentAnalysis = analysisResponse.data;
+        setIssues(currentAnalysis.issues || []);
+        setAnalysisContext(currentAnalysis);
+      }
+      const response = await api.post("/ai/insights", {
+        code,
+        analysis: currentAnalysis,
+        optimized_code: optimizedCode || null,
+        include_refactored_code: includeRefactoredCode
+      });
+      setAiInsights(response.data);
+      setActiveTab("AI Insights");
+    });
+  }
+
+  async function askAIQuestion() {
+    if (!aiQuestion.trim()) {
+      setError("Enter a question before asking AI.");
+      return;
+    }
+    await withLoading("ai-question", async () => {
+      const response = await api.post("/ai/questions", {
+        question: aiQuestion,
+        code,
+        analysis: analysisContext
+      });
+      setAiAnswer(response.data);
+      setActiveTab("AI Insights");
     });
   }
 
@@ -454,6 +500,8 @@ function App() {
     setCode(record.original_code || "");
     setOptimizedCode(record.optimized_code || "");
     setIssues(record.analysis?.issues || []);
+    setAnalysisContext(record.analysis || null);
+    setAiInsights(null);
     setMetrics({
       optimized_code: record.optimized_code,
       original_time_ms: record.original_time_ms,
@@ -499,6 +547,8 @@ function App() {
     const { selectionStart, selectionEnd, value } = event.currentTarget;
     const nextValue = `${value.slice(0, selectionStart)}  ${value.slice(selectionEnd)}`;
     setCode(nextValue);
+    setAnalysisContext(null);
+    setAiInsights(null);
     requestAnimationFrame(() => {
       event.currentTarget.selectionStart = selectionStart + 2;
       event.currentTarget.selectionEnd = selectionStart + 2;
@@ -572,7 +622,7 @@ function App() {
 
             <div style={styles.chipRow}>
               {SAMPLE_SNIPPETS.map((sample) => (
-                <button key={sample.label} style={styles.chip} onClick={() => setCode(sample.code)}>
+                <button key={sample.label} style={styles.chip} onClick={() => { setCode(sample.code); setAnalysisContext(null); setAiInsights(null); }}>
                   {sample.label}
                 </button>
               ))}
@@ -580,7 +630,7 @@ function App() {
 
             <textarea
               value={code}
-              onChange={(event) => setCode(event.target.value)}
+              onChange={(event) => { setCode(event.target.value); setAnalysisContext(null); setAiInsights(null); }}
               onKeyDown={onEditorKeyDown}
               spellCheck={false}
               style={styles.textarea}
@@ -595,6 +645,9 @@ function App() {
               </button>
               <button style={{ ...styles.button, ...styles.secondaryButton }} onClick={runMetrics} disabled={Boolean(loading)}>
                 {loading === "metrics" ? "Measuring..." : "Metrics"}
+              </button>
+              <button style={{ ...styles.button, ...styles.secondaryButton }} onClick={runAIInsights} disabled={Boolean(loading)}>
+                {loading === "ai" ? "Getting insights..." : "AI Insights"}
               </button>
               <button style={{ ...styles.button, ...styles.secondaryButton }} onClick={() => loadHistory({ force: true })} disabled={Boolean(loading)}>
                 {loading === "history" ? "Loading..." : "View History"}
@@ -730,6 +783,47 @@ function App() {
               </div>
             ) : null}
 
+            {activeTab === "AI Insights" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div style={{ ...styles.metricCard, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--color-text-secondary)", fontSize: "13px" }}>
+                    <input type="checkbox" checked={includeRefactoredCode} onChange={(event) => setIncludeRefactoredCode(event.target.checked)} />
+                    Include optional refactored code
+                  </label>
+                  <button style={{ ...styles.button, ...styles.primaryButton, padding: "10px 14px" }} onClick={runAIInsights} disabled={Boolean(loading)}>
+                    {loading === "ai" ? "Getting insights..." : "Generate AI Insights"}
+                  </button>
+                </div>
+                <div style={{ ...styles.metricCard, display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ fontWeight: 700 }}>Ask about this code</div>
+                  <textarea
+                    value={aiQuestion}
+                    onChange={(event) => setAiQuestion(event.target.value)}
+                    placeholder="For example: Why is this nested loop expensive?"
+                    maxLength={2000}
+                    style={{ ...styles.textarea, minHeight: "92px", background: "#ffffff", color: "#17324b", padding: "12px" }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                    <span style={{ color: "var(--color-text-secondary)", fontSize: "12px" }}>Answers use the current source and available analyzer findings.</span>
+                    <button style={{ ...styles.button, ...styles.secondaryButton, padding: "10px 14px" }} onClick={askAIQuestion} disabled={Boolean(loading) || !aiQuestion.trim()}>
+                      {loading === "ai-question" ? "Answering..." : "Ask AI"}
+                    </button>
+                  </div>
+                  {aiAnswer ? <div style={{ borderTop: "1px solid #dde7f1", paddingTop: "12px", lineHeight: 1.6 }}><div style={{ fontWeight: 700, marginBottom: "6px" }}>Answer</div>{aiAnswer.answer}<div style={{ color: "var(--color-text-secondary)", fontSize: "12px", marginTop: "10px" }}>{aiAnswer.disclaimer}</div></div> : null}
+                </div>
+                {aiInsights ? (
+                  <>
+                    <div style={styles.metricCard}><div style={{ fontWeight: 700, marginBottom: "8px" }}>Summary</div><div style={{ lineHeight: 1.6 }}>{aiInsights.summary}</div></div>
+                    <div style={styles.metricCard}><div style={{ fontWeight: 700, marginBottom: "8px" }}>Code explanation</div><div style={{ lineHeight: 1.6 }}>{aiInsights.code_explanation}</div></div>
+                    <div style={styles.metricCard}><div style={{ fontWeight: 700, marginBottom: "8px" }}>Issues explanation</div>{aiInsights.issues_explanation?.length ? <ul style={{ margin: 0, paddingLeft: "18px", lineHeight: 1.7 }}>{aiInsights.issues_explanation.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : <div style={{ color: "var(--color-text-secondary)" }}>No analyzer issues to explain.</div>}</div>
+                    <div style={styles.metricCard}><div style={{ fontWeight: 700, marginBottom: "8px" }}>Suggestions</div>{aiInsights.suggestions?.length ? <ul style={{ margin: 0, paddingLeft: "18px", lineHeight: 1.7 }}>{aiInsights.suggestions.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : <div style={{ color: "var(--color-text-secondary)" }}>No additional suggestions.</div>}</div>
+                    {aiInsights.refactored_code ? <div><div style={{ fontWeight: 700, marginBottom: "8px" }}>Optional refactored code</div><pre style={styles.pre}>{aiInsights.refactored_code}</pre></div> : null}
+                    <div style={{ color: "var(--color-text-secondary)", fontSize: "12px", lineHeight: 1.5 }}>{aiInsights.disclaimer}</div>
+                  </>
+                ) : <div style={{ ...styles.metricCard, color: "var(--color-text-secondary)" }}>Generate an advisory explanation based on the existing CodeOptimise analyzer results.</div>}
+              </div>
+            ) : null}
+
             {activeTab === "History" ? (
               <div style={styles.historyList}>
                 <div style={styles.historyHeader}>
@@ -772,6 +866,8 @@ function App() {
                         style={{ ...styles.button, ...styles.secondaryButton, padding: "10px 14px" }}
                         onClick={() => {
                           setCode(record.original_code || "");
+                          setAnalysisContext(null);
+                          setAiInsights(null);
                           setActiveTab("Output");
                         }}
                       >

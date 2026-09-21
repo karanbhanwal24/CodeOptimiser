@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CodePayload(BaseModel):
@@ -38,6 +38,56 @@ class AnalysisIssue(BaseModel):
     fix_available: bool
     effort: str
     impact: str
+
+
+class AIAnalysisContext(BaseModel):
+    """Analyzer output supplied as context only; it remains the source of truth."""
+
+    issues: list[AnalysisIssue] = Field(default_factory=list)
+    issue_count: int = Field(default=0, ge=0)
+    complexity_estimate: str = Field(default="Unknown", max_length=200)
+    cyclomatic_complexity: int = Field(default=0, ge=0)
+
+
+class AIInsightsRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=50_000)
+    analysis: AIAnalysisContext
+    optimized_code: str | None = Field(default=None, max_length=50_000)
+    include_refactored_code: bool = False
+
+    @field_validator("code")
+    @classmethod
+    def code_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Code must not be blank.")
+        return value
+
+
+class AIInsightsResponse(BaseModel):
+    summary: str
+    code_explanation: str
+    issues_explanation: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+    refactored_code: str | None = None
+    disclaimer: str = "AI guidance is advisory. CodeOptimise analyzer results remain the source of truth."
+
+
+class AIQuestionRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2_000)
+    code: str = Field(min_length=1, max_length=50_000)
+    analysis: AIAnalysisContext | None = None
+
+    @field_validator("question", "code")
+    @classmethod
+    def values_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Question and code must not be blank.")
+        return value
+
+
+class AIQuestionResponse(BaseModel):
+    answer: str
+    disclaimer: str = "AI guidance is advisory. CodeOptimise analyzer results remain the source of truth."
 
 
 class AnalysisResponse(BaseModel):

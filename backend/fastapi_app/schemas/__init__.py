@@ -1,4 +1,9 @@
 from .optimization import (
+    AIAnalysisContext,
+    AIInsightsRequest,
+    AIInsightsResponse,
+    AIQuestionRequest,
+    AIQuestionResponse,
     AnalysisResponse,
     CodePayload,
     MetricsPayload,
@@ -10,6 +15,11 @@ from .optimization import (
 )
 
 __all__ = [
+    "AIAnalysisContext",
+    "AIInsightsRequest",
+    "AIInsightsResponse",
+    "AIQuestionRequest",
+    "AIQuestionResponse",
     "AnalysisResponse",
     "CodePayload",
     "MetricsPayload",
