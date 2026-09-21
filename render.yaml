@@ -21,3 +21,7 @@ services:
         value: "true"
       - key: ALLOWED_ORIGINS
         value: "https://your-frontend-domain.onrender.com"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-2.5-flash"

@@ -90,6 +90,10 @@ GEMINI_API_KEY=your_google_ai_studio_key
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
+For Render, set `GEMINI_API_KEY` in the backend service's environment variables
+after applying the Blueprint. The `sync: false` setting in `render.yaml` keeps
+the secret out of the repository and prompts Render to supply it during setup.
+
 3. Run an analysis or optimizer job, then select **AI Insights** in the UI. The UI sends the existing analyzer results to `POST /ai/insights`, where the backend calls Gemini through Google's official `google-genai` Python SDK.
 
 The feature provides a summary, code and issue explanations, suggestions, and an optional refactored-code suggestion. It has its own loading/error state. If no key is configured or Gemini is unavailable, `/ai/insights` returns `503`; analysis, optimization, metrics, and saved-history workflows continue normally.
