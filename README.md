@@ -2,6 +2,23 @@
 
 CodeOptimise uses a React frontend and a FastAPI backend that now persists optimization runs in PostgreSQL through SQLAlchemy and Alembic.
 
+## Project structure
+
+```text
+backend/
+  fastapi_app/       FastAPI application, routers, services, repositories, and schemas
+  alembic/            Database migration configuration and revisions
+  tests/              Backend API and service tests
+frontend/
+  src/                React application source
+  package.json        Frontend dependencies and scripts
+api/                  Vercel serverless adapter for the FastAPI application
+```
+
+Dependencies, build output, Python caches, and OS metadata are intentionally
+not stored in Git. Use `npm ci` in `frontend/` and the documented Python setup
+commands to recreate local dependencies.
+
 ## Backend architecture
 
 The backend is organized under `backend/fastapi_app`:
