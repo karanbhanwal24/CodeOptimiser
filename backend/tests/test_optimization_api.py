@@ -213,3 +213,46 @@ def test_ai_insights_validates_input_and_is_optional(
             assert analysis_response.status_code == 200
 
     asyncio.run(run())
+
+
+def test_ai_follow_up_request_accepts_conversation_history(
+    tmp_path: Path,
+) -> None:
+    async def run() -> None:
+        async with create_test_client(tmp_path) as client:
+            from fastapi_app.routers.ai import get_ai_insights_service
+            from fastapi_app.schemas import AIQuestionResponse
+
+            class FakeAIService:
+                async def answer_question(self, request):
+                    assert len(request.history) == 2
+                    assert request.history[0].content == "Why is this code simple?"
+                    return AIQuestionResponse(answer="It has one straightforward execution path.")
+
+            app = client._transport.app
+            app.dependency_overrides[get_ai_insights_service] = lambda: FakeAIService()
+            try:
+                response = await client.post(
+                    "/ai/questions",
+                    json={
+                        "question": "Can you explain that more?",
+                        "code": "x = 1\nprint(x)\n",
+                        "analysis": {
+                            "issues": [],
+                            "issue_count": 0,
+                            "complexity_estimate": "low",
+                            "cyclomatic_complexity": 1,
+                        },
+                        "history": [
+                            {"role": "user", "content": "Why is this code simple?"},
+                            {"role": "assistant", "content": "It has one path."},
+                        ],
+                    },
+                )
+            finally:
+                app.dependency_overrides.clear()
+
+            assert response.status_code == 200
+            assert response.json()["answer"] == "It has one straightforward execution path."
+
+    asyncio.run(run())
