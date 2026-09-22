@@ -15,5 +15,10 @@ async def root() -> dict[str, str]:
 
 
 @router.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "healthy"}
+async def health() -> dict[str, str | bool]:
+    settings = get_settings()
+    return {
+        "status": "healthy",
+        "ai_configured": bool((settings.gemini_api_key or "").strip()),
+        "ai_model": settings.gemini_model,
+    }

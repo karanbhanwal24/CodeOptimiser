@@ -120,6 +120,10 @@ GEMINI_MODEL=gemini-2.5-flash
 For Render, set `GEMINI_API_KEY` in the backend service's environment variables
 after applying the Blueprint. The `sync: false` setting in `render.yaml` keeps
 the secret out of the repository and prompts Render to supply it during setup.
+If your Render service already existed before the Blueprint change, add the
+variable manually in the service's Environment page; existing services do not
+retroactively receive `sync: false` secrets. `GOOGLE_API_KEY` is also accepted
+as an alternative variable name.
 
 3. Run an analysis or optimizer job, then select **AI Insights** in the UI. The UI sends the existing analyzer results to `POST /ai/insights`, where the backend calls Gemini through Google's official `google-genai` Python SDK.
 
