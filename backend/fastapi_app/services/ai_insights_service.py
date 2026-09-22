@@ -1,14 +1,33 @@
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 import json
 import logging
+from typing import Any
 
 from ..config import Settings
 from ..schemas import AIInsightsRequest, AIInsightsResponse, AIQuestionRequest, AIQuestionResponse
 
 
 logger = logging.getLogger(__name__)
+
+
+def _gemini_response_schema(model: type[Any]) -> dict[str, Any]:
+    """Return a Gemini-compatible JSON schema without Pydantic defaults."""
+    schema = deepcopy(model.model_json_schema())
+
+    def remove_defaults(value: Any) -> None:
+        if isinstance(value, dict):
+            value.pop("default", None)
+            for child in value.values():
+                remove_defaults(child)
+        elif isinstance(value, list):
+            for child in value:
+                remove_defaults(child)
+
+    remove_defaults(schema)
+    return schema
 
 
 class AIInsightsUnavailableError(Exception):
@@ -76,7 +95,7 @@ class AIInsightsService:
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=AIInsightsResponse,
+                response_schema=_gemini_response_schema(AIInsightsResponse),
                 temperature=0.2,
                 max_output_tokens=2048,
             ),
@@ -113,7 +132,7 @@ class AIInsightsService:
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=AIQuestionResponse,
+                response_schema=_gemini_response_schema(AIQuestionResponse),
                 temperature=0.2,
                 max_output_tokens=1024,
             ),
