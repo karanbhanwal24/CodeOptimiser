@@ -38,9 +38,16 @@ class AIInsightsService:
         except Exception as exc:
             # Provider details may include sensitive configuration; keep them server-side.
             logger.exception("Gemini insights request failed: %s", type(exc).__name__)
-            raise AIInsightsUnavailableError(
-                "AI Insights is temporarily unavailable. Your CodeOptimise analysis is unchanged."
-            ) from exc
+            message = str(exc).lower()
+            if any(term in message for term in ("api key", "api_key", "unauthorized", "permission", "401", "403")):
+                detail = "AI Insights could not authenticate with Gemini. Check the deployed GEMINI_API_KEY."
+            elif any(term in message for term in ("quota", "rate limit", "resource exhausted", "429")):
+                detail = "AI Insights reached the Gemini quota or rate limit. Try again later or check Google AI Studio usage."
+            elif "model" in message and any(term in message for term in ("not found", "not supported", "invalid")):
+                detail = f"AI Insights cannot access the configured Gemini model '{self._model}'. Check GEMINI_MODEL."
+            else:
+                detail = "AI Insights is temporarily unavailable. Check the backend logs for the Gemini provider error."
+            raise AIInsightsUnavailableError(detail) from exc
 
     def _generate(self, request: AIInsightsRequest) -> AIInsightsResponse:
         try:
